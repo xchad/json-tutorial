@@ -626,7 +626,7 @@ static void test_access_array() {
 }
 
 static void test_access_object() {
-#if 0
+#if 1
     lept_value o, v, *pv;
     size_t i, j, index;
 

@@ -644,7 +644,8 @@ lept_value* lept_insert_array_element(lept_value* v, size_t index) {
 	lept_reserve_array(v, v->u.a.capacity + 1);
 	for (i = v->u.a.size - 1; i >= index; i--)
 	{
-		lept_move(&v->u.a.e[i], &v->u.a.e[i + 1]);
+		lept_move(&v->u.a.e[i + 1], &v->u.a.e[i]);
+		assert(v->u.a.e[i + 1].type == LEPT_NUMBER);
 		if(i == 0)
 			break;
 	}
@@ -732,8 +733,11 @@ size_t lept_find_object_index(const lept_value* v, const char* key, size_t klen)
     size_t i;
     assert(v != NULL && v->type == LEPT_OBJECT && key != NULL);
     for (i = 0; i < v->u.o.size; i++)
-        if (v->u.o.m[i].klen == klen && memcmp(v->u.o.m[i].k, key, klen) == 0)
-            return i;
+    {
+		if (v->u.o.m[i].klen == klen && memcmp(v->u.o.m[i].k, key, klen) == 0)
+			return i;
+    }
+      
     return LEPT_KEY_NOT_EXIST;
 }
 
@@ -745,10 +749,30 @@ lept_value* lept_find_object_value(lept_value* v, const char* key, size_t klen) 
 lept_value* lept_set_object_value(lept_value* v, const char* key, size_t klen) {
     assert(v != NULL && v->type == LEPT_OBJECT && key != NULL);
     /* \todo */
-    return NULL;
+	if(lept_find_object_index(v, key, klen) != LEPT_KEY_NOT_EXIST)
+	{
+		return NULL;
+	}
+	if (v->u.o.size == v->u.o.capacity)
+		lept_reserve_object(v, v->u.o.capacity == 0 ? 1 : v->u.o.capacity * 2);
+	v->u.o.m[v->u.o.size].klen = klen;
+	v->u.o.m[v->u.o.size].k = (char*)malloc(klen);
+	memcpy(v->u.o.m[v->u.o.size].k, key, klen);
+	return &v->u.o.m[v->u.o.size++].v;
 }
 
 void lept_remove_object_value(lept_value* v, size_t index) {
-    assert(v != NULL && v->type == LEPT_OBJECT && index < v->u.o.size);
-    /* \todo */
+	size_t i;
+	assert(v != NULL && v->type == LEPT_OBJECT && index < v->u.o.size);
+	/* \todo */
+	for (i = index; i < v->u.o.size - index -1; i++)
+	{
+		lept_move(&v->u.o.m[i].v, &v->u.o.m[i + 1].v);
+		memcpy(v->u.o.m[i].k, v->u.o.m[i + 1].k, v->u.o.m[i + 1].klen);
+		v->u.o.m[i].klen = v->u.o.m[i + 1].klen;
+		
+	}
+	lept_free(&v->u.o.m[v->u.o.size - 1].v);
+	free(v->u.o.m[v->u.o.size - 1].k);
+	v->u.o.size--;
 }
